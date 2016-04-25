@@ -1,0 +1,8 @@
+*.js
+*.map
+!gulpfile.js
+!dist/highlighter.js
+typings/
+node_modules/
+*~
+*.swp

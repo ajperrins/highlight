@@ -1,0 +1,30 @@
+{
+  "name": "highlight",
+  "version": "0.1.0",
+  "description": "Highlight text on a page",
+  "main": "",
+  "dependencies": {},
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "del": "^2.2.0",
+    "gulp": "^3.9.1",
+    "gulp-typescript": "^2.13.0"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ajperrins/highlight.git"
+  },
+  "keywords": [
+    "highlight",
+    "text"
+  ],
+  "author": "andrew.perrins@gmail.com",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/ajperrins/highlight/issues"
+  },
+  "homepage": "https://github.com/ajperrins/highlight#readme"
+}
