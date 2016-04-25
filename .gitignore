@@ -2,6 +2,7 @@
 *.map
 !gulpfile.js
 !dist/highlighter.js
+!test/mocha.js
 typings/
 node_modules/
 *~
