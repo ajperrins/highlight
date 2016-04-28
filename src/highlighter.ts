@@ -2,31 +2,34 @@
  * Highlights text on a web page
  */
 class Highlighter {
-  constructor(private _html: string) {
+  constructor(private _html: string, className?: string) {
     this.split();
+    if (className) this.class = className;
   }
 
   /**
-   * Elements in the array represent either text which is visible on the page, or an 
-   * HTML tag (either opening or closing)
+   * Elements in the array represent either text which is visible on the page, or an HTML tag (either opening or closing)
    */
   public textAndTags: string[] = [];
+  public class = 'qp-highlight';
   private static _tagRegex: RegExp = new RegExp('<[^>]*>', 'igm');
 
   /**
-   * Inserts span elements with a class that is used to highlight text on the webpage
+   * Given the string of HTML provided to the constructor, this function surrounds text that matches `str` with span 
+   * elements having a class of "this.class"
    */
-  public highlight(str: string): string {
+  public highlight(term: string): string {
     let iterator = new HtmlTextIterator(this);
     let nxt: string;
+    term = term.toLowerCase();
 
     while ((nxt = iterator.next()) !== null) {
-      if (nxt.toLowerCase() === str[0].toLowerCase()) {
-        var restOfString = iterator.peekText(str.length - 1);
+      if (nxt.toLowerCase() === term[0].toLowerCase()) {
+        var restOfStringLower = iterator.peekText(term.length - 1).toLowerCase();
 
-        var insertions = 0;
-        if (restOfString.toLowerCase() === str.substring(1).toLowerCase()) {
-
+        if (restOfStringLower === term.substring(1)) {
+          var insertions = 0;
+          // If the end of the 'str' match is in the same text node, the span markup insertion is simple
           if (iterator.peeker.currentIndex === iterator.currentIndex) {
             this.insertMarkup(iterator.currentIndex,
               iterator.currentStringIndex - 1,
@@ -34,12 +37,13 @@ class Highlighter {
 
             insertions++;
           } else {
-
+            // If the end of the 'str' match spans across DOM nodes, we have to properly next our span tags across nodes
             this.insertMarkup(iterator.peeker.currentIndex, 0, iterator.peeker.currentStringIndex - 1);
             insertions++;
 
-            // Surround each text-piece post match-start with the span 
-            // in reverse order, until we get to current
+            // Surround each text node in `textAndTags` which comes after the match-start with <span> 
+            // elements having the `this.class` class. Do this in reverse order, until we reach the current 
+            // index in `textAndTags`
             for (var i = iterator.peeker.currentIndex - 1; i > iterator.currentIndex; i--) {
               if (this.isText(i)) {
                 this.insertMarkup(i, 0, this.textAndTags[i].length);
@@ -53,7 +57,6 @@ class Highlighter {
             insertions++;
 
           }
-
           // The insertmarkup() fn adds 4 pieces each invocation
           iterator.currentIndex = iterator.currentIndex + (4 * insertions);
           iterator.currentStringIndex = 0;
@@ -63,13 +66,18 @@ class Highlighter {
     return this.textAndTags.join('');
   }
 
+  public reset() {
+    this.textAndTags.length = 0;
+    this.split();
+  }
+
   private insertMarkup(pieceIndex: number, stringIndexStart: number, stringIndexEnd: number) {
     var piece = this.textAndTags[pieceIndex];
     var left = piece.substring(0, stringIndexStart);
     var middle = piece.substring(stringIndexStart, stringIndexEnd);
     var right = piece.substring(stringIndexEnd, piece.length);
 
-    this.textAndTags.splice(pieceIndex, 1, left, '<span class="qp-highlight">', middle, '</span>', right);
+    this.textAndTags.splice(pieceIndex, 1, left, `<span class="${this.class}">`, middle, '</span>', right);
   }
 
 
@@ -79,6 +87,16 @@ class Highlighter {
 
   isTag(index: number) {
     return !this.isText(index);
+  }
+
+  /**
+   * Gets a boolean value indicating whether the text element at the specified index has, as its parent (direct ancestor), a tag with the given tag name.
+   * This is used to preventing modifying script tag contents  
+   */
+  isTagContentFor(tagName: string, index: number) {
+    const node = this.textAndTags[index];
+    const prev = this.textAndTags[index - 1];
+    return prev && this.isTag(index - 1) && prev.substring(1, 7).toLowerCase() === 'script';
   }
 
   /**
@@ -95,6 +113,26 @@ class Highlighter {
   }
 
   /**
+   * When attempting to find a string match in the DOM, we have to remove newline and whitespace that are omitted by
+   * layout engines; this mimcs innerText, as opposed to textContent (see https://kellegous.com/j/2013/02/27/innertext-vs-textcontent/)
+   */
+  public static removeWhitespaceFromTextContentPerLayoutRules(content: string): string {
+    var lines = content.split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      let firstNonWhitespaceIndex = 0;
+      while (line[firstNonWhitespaceIndex] === ' ') firstNonWhitespaceIndex++;
+      if (firstNonWhitespaceIndex) {
+        if (i === 0 && firstNonWhitespaceIndex >= 1) {
+          lines[0] = ' ' + line.substring(firstNonWhitespaceIndex);
+        }
+        else lines[i] = line.substring(firstNonWhitespaceIndex);
+      }
+    }
+    return lines.join(' ');
+  }
+
+  /**
    * Populates the `pieces` array with strings that represent either HTML tags or visible text
    */
   private split() {
@@ -105,7 +143,7 @@ class Highlighter {
       let leftOfMatch = this._html.substring(left, match.index);
 
       if (leftOfMatch) {
-        this.textAndTags.push(leftOfMatch);
+        this.textAndTags.push(Highlighter.removeWhitespaceFromTextContentPerLayoutRules(leftOfMatch));
       }
       var tag = match[0];
       this.textAndTags.push(tag);
@@ -114,10 +152,11 @@ class Highlighter {
 
     let tail = this._html.substring(left, this._html.length);
     if (tail) {
-      this.textAndTags.push(tail);
+      this.textAndTags.push(Highlighter.removeWhitespaceFromTextContentPerLayoutRules(tail));
     }
   }
 }
+
 
 /**
  * Provides `next` and `peek` functions; the next function returns the next text
@@ -149,7 +188,9 @@ class HtmlTextIterator {
    * Returns the next text (non-tag) character, or null once we've reached the end of the HTML 
    */
   next(): string {
-    while (this.currentIndex < this.entryText.textAndTags.length && this.entryText.isTag(this.currentIndex)) {
+
+    while (this.currentIndex < this.entryText.textAndTags.length && (this.entryText.isTag(this.currentIndex) || this.entryText.isTagContentFor('script', this.currentIndex))) {
+      // Skips elements that represent tags or script blocks 
       this.currentIndex++;
     }
 
