@@ -79,7 +79,7 @@ var Highlighter = (function () {
     Highlighter.prototype.isTagContentFor = function (tagName, index) {
         var node = this.textAndTags[index];
         var prev = this.textAndTags[index - 1];
-        return prev && this.isTag(index - 1) && prev.substring(1, 7).toLowerCase() === 'script';
+        return prev && this.isTag(index - 1) && prev.substring(1, 7).toLowerCase() === tagName;
     };
     /**
      * Returns the text (without markup tags)

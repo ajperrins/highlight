@@ -5,9 +5,7 @@ var ts = require('gulp-typescript');
 gulp.task('clean:js', function () {
     return del([
         'src/*.js',
-        'src/*.map',
-        'test/*.js',
-        'test/*.map'
+        'src/*.map'
     ]);
 });
 

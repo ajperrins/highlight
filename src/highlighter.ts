@@ -96,7 +96,7 @@ class Highlighter {
   isTagContentFor(tagName: string, index: number) {
     const node = this.textAndTags[index];
     const prev = this.textAndTags[index - 1];
-    return prev && this.isTag(index - 1) && prev.substring(1, 7).toLowerCase() === 'script';
+    return prev && this.isTag(index - 1) && prev.substring(1, 7).toLowerCase() === tagName;
   }
 
   /**
